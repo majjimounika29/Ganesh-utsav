@@ -1,0 +1,383 @@
+import 'dart:async';
+import 'dart:math' as math;
+import 'package:flutter/material.dart';
+
+void main() => runApp(const GaneshFestivalGameApp());
+
+class GaneshFestivalGameApp extends StatelessWidget {
+  const GaneshFestivalGameApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Ganesh Utsav 11-Day Festival',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: const Color(0xFF120704),
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepOrange,
+          brightness: Brightness.dark,
+        ),
+        useMaterial3: true,
+      ),
+      home: const MainGameHub(),
+    );
+  }
+}
+
+enum FestivalDay {
+  prana, modak, rangoli, flowers, aarti, stories,
+  lights, prasad, bhog, uttarpuja, visarjan,
+}
+
+extension FestivalDayMeta on FestivalDay {
+  String get title => const [
+    'Day 1: Prana Pratishtha',
+    'Day 2: Modak Prasadam',
+    'Day 3: Sacred Rangoli',
+    'Day 4: Mandap Garlands',
+    'Day 5: Dhol Tasha Beats',
+    'Day 6: Divine Stories',
+    'Day 7: Illumination',
+    'Day 8: Maha Prasad',
+    'Day 9: Chappan Bhog',
+    'Day 10: Uttarpuja Prep',
+    'Day 11: Grand Visarjan',
+  ][index];
+
+  String get emoji => const ['🪔','🍯','🎨','🌼','🥁','📖','💡','🍚','🍱','🙏','🌊'][index];
+
+  String get description => const [
+    'Welcome Lord Ganesha and begin the 11-day celebration.',
+    'Prepare symbolic modak prasadam with care.',
+    'Create a colorful radial rangoli offering.',
+    'Decorate the mandap with flowers and leaves.',
+    'Match the dhol and tasha beats to the rhythm.',
+    'Explore stories and values associated with Lord Ganesha.',
+    'Light the festival space and create a warm glow.',
+    'Serve a festive Maha Prasad meal.',
+    'Arrange the traditional Chappan Bhog offering.',
+    'Prepare respectfully for Uttarpuja.',
+    'Complete the celebration with a joyful Visarjan procession.',
+  ][index];
+}
+
+class MainGameHub extends StatefulWidget {
+  const MainGameHub({super.key});
+  @override State<MainGameHub> createState() => _MainGameHubState();
+}
+
+class _MainGameHubState extends State<MainGameHub> {
+  FestivalDay _day = FestivalDay.prana;
+  int _points = 0;
+  final Set<FestivalDay> _completed = {};
+
+  void addPoints(int points) {
+    setState(() {
+      _points += points;
+      _completed.add(_day);
+    });
+  }
+
+  void reset() => setState(() {
+    _points = 0;
+    _completed.clear();
+    _day = FestivalDay.prana;
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = _completed.length / FestivalDay.values.length;
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('🕉️ Ganesh Utsav'),
+        backgroundColor: Colors.deepOrange.shade900,
+        actions: [
+          Center(child: Text('⭐ $_points', style: const TextStyle(fontWeight: FontWeight.bold))),
+          IconButton(onPressed: reset, icon: const Icon(Icons.restart_alt), tooltip: 'Reset'),
+          const SizedBox(width: 8),
+        ],
+      ),
+      body: Column(children: [
+        Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 10),
+          color: Colors.black26,
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              const Text('Festival Progress', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Spacer(),
+              Text('${_completed.length}/11 days'),
+            ]),
+            const SizedBox(height: 7),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: LinearProgressIndicator(value: progress, minHeight: 9),
+            ),
+          ]),
+        ),
+        SizedBox(
+          height: 70,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: 11,
+            itemBuilder: (_, i) {
+              final d = FestivalDay.values[i];
+              final selected = d == _day;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 10),
+                child: ChoiceChip(
+                  selected: selected,
+                  label: Text('${d.emoji} ${i + 1}'),
+                  selectedColor: Colors.deepOrange,
+                  onSelected: (_) => setState(() => _day = d),
+                ),
+              );
+            },
+          ),
+        ),
+        Expanded(child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: _buildContent(_day),
+        )),
+      ]),
+    );
+  }
+
+  Widget _buildContent(FestivalDay day) {
+    if (day == FestivalDay.rangoli) {
+      return RangoliMinigame(key: const ValueKey('rangoli'), onComplete: () => addPoints(150));
+    }
+    if (day == FestivalDay.aarti) {
+      return DholTashaRhythmMinigame(key: const ValueKey('rhythm'), onComplete: (s) => addPoints(s));
+    }
+    return DayActivity(
+      key: ValueKey(day),
+      day: day,
+      completed: _completed.contains(day),
+      onComplete: () => addPoints(50),
+    );
+  }
+}
+
+class DayActivity extends StatelessWidget {
+  final FestivalDay day;
+  final bool completed;
+  final VoidCallback onComplete;
+  const DayActivity({super.key, required this.day, required this.completed, required this.onComplete});
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 650),
+        child: Card(
+          elevation: 8,
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(children: [
+              Text(day.emoji, style: const TextStyle(fontSize: 72)),
+              const SizedBox(height: 12),
+              Text(day.title, textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 25, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 12),
+              Text(day.description, textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, color: Colors.white70)),
+              const SizedBox(height: 24),
+              if (completed)
+                const Chip(avatar: Icon(Icons.check, size: 18), label: Text('Completed'))
+              else
+                FilledButton.icon(
+                  onPressed: onComplete,
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text('Complete Ritual  +50 Devotion'),
+                ),
+            ]),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class RangoliMinigame extends StatefulWidget {
+  final VoidCallback onComplete;
+  const RangoliMinigame({super.key, required this.onComplete});
+  @override State<RangoliMinigame> createState() => _RangoliMinigameState();
+}
+
+class _RangoliMinigameState extends State<RangoliMinigame> {
+  final List<List<Offset>> paths = [];
+  List<Offset> current = [];
+  Color selected = Colors.orangeAccent;
+  final palette = [Colors.orangeAccent, Colors.pinkAccent, Colors.amber, Colors.cyanAccent, Colors.greenAccent, Colors.white];
+
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    const Padding(
+      padding: EdgeInsets.all(10),
+      child: Text('🎨 Draw a traditional 8-fold symmetric Rangoli', style: TextStyle(color: Colors.amber, fontSize: 16)),
+    ),
+    Expanded(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Container(
+          decoration: BoxDecoration(color: Colors.black, border: Border.all(color: Colors.orangeAccent, width: 2), borderRadius: BorderRadius.circular(16)),
+          child: GestureDetector(
+            onPanStart: (d) => setState(() => current = [d.localPosition]),
+            onPanUpdate: (d) => setState(() => current.add(d.localPosition)),
+            onPanEnd: (_) => setState(() { if (current.length > 1) paths.add(List.of(current)); current = []; }),
+            child: CustomPaint(
+              painter: RangoliPainter(paths, current, selected),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+      ),
+    ),
+    Padding(
+      padding: const EdgeInsets.all(10),
+      child: Wrap(alignment: WrapAlignment.center, spacing: 8, children: [
+        ...palette.map((c) => GestureDetector(
+          onTap: () => setState(() => selected = c),
+          child: CircleAvatar(radius: 16, backgroundColor: c,
+            child: selected == c ? const Icon(Icons.check, color: Colors.black, size: 18) : null),
+        )),
+        IconButton(onPressed: () => setState(() => paths.clear()), icon: const Icon(Icons.clear, color: Colors.redAccent)),
+        FilledButton(onPressed: paths.isEmpty ? null : () {
+          widget.onComplete();
+          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Rangoli offering completed! +150')));
+        }, child: const Text('Offer Rangoli +150')),
+      ]),
+    ),
+  ]);
+}
+
+class RangoliPainter extends CustomPainter {
+  final List<List<Offset>> paths;
+  final List<Offset> current;
+  final Color color;
+  RangoliPainter(this.paths, this.current, this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final strokes = [...paths, if (current.isNotEmpty) current];
+    for (final stroke in strokes) {
+      if (stroke.length < 2) continue;
+      for (int i = 0; i < 8; i++) {
+        canvas.save();
+        canvas.translate(center.dx, center.dy);
+        canvas.rotate(i * math.pi / 4);
+        canvas.translate(-center.dx, -center.dy);
+        final p = Paint()..color = color..strokeWidth = 3.5..strokeCap = StrokeCap.round..style = PaintingStyle.stroke;
+        final path = Path()..moveTo(stroke.first.dx, stroke.first.dy);
+        for (final pt in stroke.skip(1)) path.lineTo(pt.dx, pt.dy);
+        canvas.drawPath(path, p);
+        canvas.restore();
+      }
+    }
+    final dot = Paint()..color = Colors.amber..style = PaintingStyle.fill;
+    canvas.drawCircle(center, 6, dot);
+  }
+
+  @override bool shouldRepaint(covariant RangoliPainter old) => true;
+}
+
+class RhythmNote {
+  final double time;
+  final String instrument;
+  bool hit = false;
+  RhythmNote(this.time, this.instrument);
+}
+
+class DholTashaRhythmMinigame extends StatefulWidget {
+  final Function(int) onComplete;
+  const DholTashaRhythmMinigame({super.key, required this.onComplete});
+  @override State<DholTashaRhythmMinigame> createState() => _RhythmState();
+}
+
+class _RhythmState extends State<DholTashaRhythmMinigame> with SingleTickerProviderStateMixin {
+  late final AnimationController ticker;
+  double elapsed = 0;
+  int score = 0;
+  bool finished = false;
+  final notes = [
+    RhythmNote(1.5, 'DHOL'), RhythmNote(2.3, 'TASHA'), RhythmNote(3.1, 'DHOL'),
+    RhythmNote(3.9, 'TASHA'), RhythmNote(4.5, 'DHOL'), RhythmNote(5.2, 'TASHA'),
+    RhythmNote(6.0, 'DHOL'), RhythmNote(6.8, 'TASHA'), RhythmNote(7.5, 'DHOL'),
+    RhythmNote(8.3, 'TASHA'),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    ticker = AnimationController(vsync: this, duration: const Duration(seconds: 10))
+      ..addListener(() => setState(() => elapsed = ticker.value * 10))
+      ..addStatusListener((s) {
+        if (s == AnimationStatus.completed && !finished) {
+          finished = true;
+          widget.onComplete(score);
+        }
+      });
+    ticker.forward();
+  }
+
+  void hit(String instrument) {
+    if (finished) return;
+    RhythmNote? best;
+    double bestDiff = .26;
+    for (final n in notes) {
+      final diff = (n.time - elapsed).abs();
+      if (!n.hit && n.instrument == instrument && diff <= bestDiff) {
+        best = n; bestDiff = diff;
+      }
+    }
+    if (best != null) setState(() { best!.hit = true; score += 100; });
+  }
+
+  @override
+  Widget build(BuildContext context) => Column(children: [
+    Padding(
+      padding: const EdgeInsets.all(10),
+      child: Text('🥁 Score: $score   •   ${(10 - elapsed).clamp(0, 10).toStringAsFixed(1)}s',
+        style: const TextStyle(fontSize: 18, color: Colors.amber)),
+    ),
+    Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(color: Colors.black26, border: Border.all(color: Colors.deepOrange), borderRadius: BorderRadius.circular(16)),
+        child: LayoutBuilder(builder: (_, c) {
+          final hitY = c.maxHeight - 100;
+          return Stack(children: [
+            Positioned(left: 0, right: 0, top: hitY,
+              child: Container(height: 4, color: Colors.amber)),
+            ...notes.where((n) => !n.hit).map((n) {
+              final y = hitY - (n.time - elapsed) * 130;
+              if (y < -60 || y > c.maxHeight + 60) return const SizedBox.shrink();
+              return Positioned(top: y, left: n.instrument == 'DHOL' ? c.maxWidth * .25 : c.maxWidth * .65,
+                child: CircleAvatar(radius: 25, backgroundColor: n.instrument == 'DHOL' ? Colors.orange : Colors.red,
+                  child: Text(n.instrument[0], style: const TextStyle(fontWeight: FontWeight.bold))));
+            }),
+            const Positioned(top: 16, left: 0, right: 0,
+              child: Center(child: Text('Tap when the beat reaches the golden line', style: TextStyle(color: Colors.white70)))),
+          ]);
+        }),
+      ),
+    ),
+    Padding(
+      padding: const EdgeInsets.all(14),
+      child: Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
+        Expanded(child: Padding(padding: const EdgeInsets.only(right: 6),
+          child: FilledButton(style: FilledButton.styleFrom(padding: const EdgeInsets.all(18)),
+            onPressed: () => hit('DHOL'), child: const Text('🥁 DHOL', style: TextStyle(fontSize: 18))))),
+        Expanded(child: Padding(padding: const EdgeInsets.only(left: 6),
+          child: FilledButton(style: FilledButton.styleFrom(padding: const EdgeInsets.all(18)),
+            onPressed: () => hit('TASHA'), child: const Text('🪘 TASHA', style: TextStyle(fontSize: 18))))),
+      ]),
+    ),
+  ]);
+
+  @override void dispose() { ticker.dispose(); super.dispose(); }
+}
